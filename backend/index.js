@@ -79,13 +79,11 @@ io.on("connection",(socket)=>{
 
   });
 
-const __dirname=path.resolve()
-
-app.use(express.static(path.join(__dirname,"/frontend/vite-project/dist")))
-
-app.get(/.*/,(req,res)=>{
-   res.sendFile(path.join(__dirname,"frontend","vite-project","dist","index.html"))
+app.get("/", (req, res) => {
+    res.send("Backend is running 🚀")
 })
+
+
 
 server.listen(port,()=>{
    console.log("server start on 5000");
