@@ -85,7 +85,7 @@ const App = () => {
   }
 
   const leaveroom=()=>{
-      socket.emit("leaveroom");
+      socket.emit("leaveRoom");
       setjoined(false);
       setroomid("");
       setuserName("");
