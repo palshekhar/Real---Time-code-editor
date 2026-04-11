@@ -1,84 +1,70 @@
-const express = require("express");
-const http = require("http");
-const cors = require("cors");
-const { Server } = require("socket.io");
+import express from "express";
+import http from "http";
+import cors from "cors";
+import { Server } from "socket.io";
 
 const app = express();
 
 app.use(cors({
-  origin: "*", // change to Vercel URL in production
+  origin: "*"
 }));
 
 const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: "*",
-  },
+    origin: "*"
+  }
 });
 
-const rooms = {}; // { roomid: [{ id, userName }] }
+const rooms = {};
 
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
 
-  // JOIN
   socket.on("join", ({ roomid, userName }) => {
     socket.join(roomid);
 
     if (!rooms[roomid]) rooms[roomid] = [];
 
-    rooms[roomid].push({
-      id: socket.id,
-      userName,
-    });
+    rooms[roomid].push({ id: socket.id, userName });
 
-    // send updated users
     io.to(roomid).emit(
       "userJoined",
-      rooms[roomid].map((u) => u.userName)
+      rooms[roomid].map(u => u.userName)
     );
   });
 
-  // CODE CHANGE
   socket.on("codeChange", ({ roomid, code }) => {
     socket.to(roomid).emit("codeupdate", code);
   });
 
-  // LANGUAGE
   socket.on("languageChange", ({ roomid, language }) => {
     socket.to(roomid).emit("languageUpdate", language);
   });
 
-  // TYPING
   socket.on("typing", ({ roomid, userName }) => {
     socket.to(roomid).emit("usertyping", userName);
   });
 
-  // LEAVE ROOM
-  socket.on("leaveRoom", ({ roomid, userName }) => {
+  socket.on("leaveRoom", ({ roomid }) => {
     if (!rooms[roomid]) return;
 
-    rooms[roomid] = rooms[roomid].filter(
-      (u) => u.id !== socket.id
-    );
+    rooms[roomid] = rooms[roomid].filter(u => u.id !== socket.id);
 
     io.to(roomid).emit(
       "userJoined",
-      rooms[roomid].map((u) => u.userName)
+      rooms[roomid].map(u => u.userName)
     );
   });
 
-  // DISCONNECT
   socket.on("disconnect", () => {
     for (let roomid in rooms) {
-      rooms[roomid] = rooms[roomid].filter(
-        (u) => u.id !== socket.id
-      );
+      rooms[roomid] = rooms[roomid].filter(u => u.id !== socket.id);
 
       io.to(roomid).emit(
         "userJoined",
-        rooms[roomid].map((u) => u.userName)
+        rooms[roomid].map(u => u.userName)
       );
     }
   });
