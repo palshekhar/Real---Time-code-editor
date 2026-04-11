@@ -1,119 +1,89 @@
-import express from "express";
-import http from "http";
-import { Server } from "socket.io";
+const express = require("express");
+const http = require("http");
+const cors = require("cors");
+const { Server } = require("socket.io");
 
 const app = express();
+
+app.use(cors({
+  origin: "*", // change to Vercel URL in production
+}));
+
 const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
     origin: "*",
-    methods: ["GET", "POST"],
   },
 });
 
-const PORT = 5000;
-
-// Store rooms
-const rooms = new Map();
+const rooms = {}; // { roomid: [{ id, userName }] }
 
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
 
-  let currRoom = null;
-  let currUser = null;
-
-  // 🔹 JOIN ROOM
+  // JOIN
   socket.on("join", ({ roomid, userName }) => {
-    // Leave previous room
-    if (currRoom && rooms.has(currRoom)) {
-      rooms.get(currRoom).delete(currUser);
-      io.to(currRoom).emit(
-        "userJoined",
-        Array.from(rooms.get(currRoom))
-      );
-      socket.leave(currRoom);
-    }
-
-    currRoom = roomid;
-    currUser = userName;
-
     socket.join(roomid);
 
-    if (!rooms.has(roomid)) {
-      rooms.set(roomid, new Set());
-    }
+    if (!rooms[roomid]) rooms[roomid] = [];
 
-    rooms.get(roomid).add(userName);
+    rooms[roomid].push({
+      id: socket.id,
+      userName,
+    });
 
-    console.log("Users in room:", Array.from(rooms.get(roomid)));
-
+    // send updated users
     io.to(roomid).emit(
       "userJoined",
-      Array.from(rooms.get(roomid))
+      rooms[roomid].map((u) => u.userName)
     );
   });
 
-  // 🔹 CODE CHANGE
+  // CODE CHANGE
   socket.on("codeChange", ({ roomid, code }) => {
     socket.to(roomid).emit("codeupdate", code);
   });
 
-  // 🔹 TYPING
+  // LANGUAGE
+  socket.on("languageChange", ({ roomid, language }) => {
+    socket.to(roomid).emit("languageUpdate", language);
+  });
+
+  // TYPING
   socket.on("typing", ({ roomid, userName }) => {
     socket.to(roomid).emit("usertyping", userName);
   });
 
-  // 🔹 LANGUAGE CHANGE
-  socket.on("languageChange", ({ roomid, language }) => {
-    io.to(roomid).emit("languageUpdate", language);
+  // LEAVE ROOM
+  socket.on("leaveRoom", ({ roomid, userName }) => {
+    if (!rooms[roomid]) return;
+
+    rooms[roomid] = rooms[roomid].filter(
+      (u) => u.id !== socket.id
+    );
+
+    io.to(roomid).emit(
+      "userJoined",
+      rooms[roomid].map((u) => u.userName)
+    );
   });
 
-  // 🔹 LEAVE ROOM
-  socket.on("leaveRoom", () => {
-    if (currRoom && currUser && rooms.has(currRoom)) {
-      rooms.get(currRoom).delete(currUser);
-
-      io.to(currRoom).emit(
-        "userJoined",
-        Array.from(rooms.get(currRoom))
-      );
-
-      socket.leave(currRoom);
-
-      // cleanup empty room
-      if (rooms.get(currRoom).size === 0) {
-        rooms.delete(currRoom);
-      }
-
-      currRoom = null;
-      currUser = null;
-    }
-  });
-
-  // 🔹 DISCONNECT
+  // DISCONNECT
   socket.on("disconnect", () => {
-    console.log("User disconnected:", socket.id);
-
-    if (currRoom && currUser && rooms.has(currRoom)) {
-      rooms.get(currRoom).delete(currUser);
-
-      io.to(currRoom).emit(
-        "userJoined",
-        Array.from(rooms.get(currRoom))
+    for (let roomid in rooms) {
+      rooms[roomid] = rooms[roomid].filter(
+        (u) => u.id !== socket.id
       );
 
-      if (rooms.get(currRoom).size === 0) {
-        rooms.delete(currRoom);
-      }
+      io.to(roomid).emit(
+        "userJoined",
+        rooms[roomid].map((u) => u.userName)
+      );
     }
   });
 });
 
-app.get("/", (req, res) => {
-  res.send("Backend is running 🚀");
-});
-
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+server.listen(5000, () => {
+  console.log("Server running on port 5000");
 });
