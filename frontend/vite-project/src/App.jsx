@@ -14,10 +14,11 @@ const App = () => {
   const [users, setUsers] = useState([]);
   const [typing, setTyping] = useState("");
 
-  // 🔥 CONNECT SOCKET
+  // 🔥 CONNECT SOCKET - Real-time communication is a fundamental component [cite: 190]
   useEffect(() => {
+    // Note: Replace with your actual deployed URL if needed
     socketRef.current = io("https://real-time-code-editor-2-r5s7.onrender.com", {
-      transports: ["websocket"],
+      transports: ["websocket"], // WebSocket facilitates instantaneous transmission [cite: 191]
     });
 
     socketRef.current.on("connect", () => {
@@ -54,7 +55,7 @@ const App = () => {
     }
   };
 
-  // 🔹 CODE CHANGE
+  // 🔹 CODE CHANGE - Propagates changes to maintain data consistency [cite: 34]
   const handleCodeChange = (newCode) => {
     setCode(newCode);
     socketRef.current.emit("codeChange", { roomid, code: newCode });
@@ -75,55 +76,75 @@ const App = () => {
     setUsers([]);
   };
 
+  // 🔹 LOGIN SCREEN
   if (!joined) {
     return (
-      <div>
-        <h1>Join Room</h1>
-        <input
-          placeholder="Room ID"
-          value={roomid}
-          onChange={(e) => setRoomid(e.target.value)}
-        />
-        <input
-          placeholder="Name"
-          value={userName}
-          onChange={(e) => setUserName(e.target.value)}
-        />
-        <button onClick={joinRoom}>Join</button>
+      <div className="join-container">
+        <div className="join-form">
+          <h1>Join Room</h1>
+          <input
+            placeholder="Room ID"
+            value={roomid}
+            onChange={(e) => setRoomid(e.target.value)}
+          />
+          <input
+            placeholder="Name"
+            value={userName}
+            onChange={(e) => setUserName(e.target.value)}
+          />
+          <button onClick={joinRoom}>Join</button>
+        </div>
       </div>
     );
   }
 
+  // 🔹 MAIN EDITOR LAYOUT - React framework for interactive UI 
   return (
-    <div style={{ display: "flex" }}>
-      <div style={{ width: "250px" }}>
-        <h3>Room: {roomid}</h3>
+    <div className="editor-container">
+      <div className="sidebar">
+        <div className="room-info">
+          <h2>Room ID</h2>
+          <span>{roomid}</span>
+        </div>
 
-        <h4>Users:</h4>
-        <ul>
-          {users.map((u, i) => (
-            <li key={i}>{u}</li>
-          ))}
-        </ul>
+        <div className="users-section">
+          <h3>Collaborators</h3>
+          <ul>
+            {users.map((u, i) => (
+              <li key={i}>{u}</li>
+            ))}
+          </ul>
+        </div>
 
-        <p>{typing}</p>
+        <p className="typing-status">{typing}</p>
 
-        <select value={language} onChange={handleLanguageChange}>
-          <option value="javascript">JS</option>
-          <option value="python">Python</option>
-          <option value="java">Java</option>
-        </select>
-
-        <button onClick={leaveRoom}>Leave</button>
+        <div className="controls">
+          <label style={{ fontSize: '12px', color: '#94a3b8' }}>Language</label>
+          <select value={language} onChange={handleLanguageChange}>
+            <option value="javascript">JavaScript</option>
+            <option value="python">Python</option>
+            <option value="java">Java</option>
+            <option value="cpp">C++</option>
+          </select>
+          
+          <button className="leave-btn" onClick={leaveRoom}>
+            Leave Session
+          </button>
+        </div>
       </div>
 
-      <div style={{ flex: 1 }}>
+      <div className="editor-wrapper">
         <Editor
-          height="100vh"
+          height="100%"
           language={language}
           value={code}
           onChange={handleCodeChange}
           theme="vs-dark"
+          options={{
+            fontSize: 14,
+            minimap: { enabled: false },
+            automaticLayout: true,
+          }}
         />
       </div>
     </div>
